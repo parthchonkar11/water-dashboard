@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Smart Water Quality Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-database-compat.js"></script>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #e5e7eb;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+    .card {
+      background: #111827;
+      border-radius: 16px;
+      padding: 20px 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+      max-width: 480px;
+      width: 92%;
+    }
+    .title {
+      font-size: 22px;
+      margin-bottom: 4px;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .box {
+      background: #020617;
+      border-radius: 10px;
+      padding: 10px;
+      border: 1px solid #1f2937;
+    }
+    .label {
+      font-size: 11px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .value {
+      font-size: 20px;
+      margin-top: 4px;
+    }
+    .status-pill {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+      margin-top: 6px;
+    }
+    .good  { background: #14532d; color: #bbf7d0; }
+    .avg   { background: #78350f; color: #fed7aa; }
+    .bad   { background: #7f1d1d; color: #fecaca; }
+
+    .footer {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="title">Smart Water Quality</div>
+    <div class="subtitle">Live data from Firebase Realtime Database</div>
+
+    <div class="grid">
+      <div class="box">
+        <div class="label">Temperature</div>
+        <div class="value" id="tempValue">-- °C</div>
+      </div>
+      <div class="box">
+        <div class="label">TDS</div>
+        <div class="value" id="tdsValue">-- ppm</div>
+      </div>
+      <div class="box">
+        <div class="label">Turbidity</div>
+        <div class="value" id="turbValue">--</div>
+      </div>
+      <div class="box">
+        <div class="label">Status</div>
+        <div class="value">
+          <span id="statusPill" class="status-pill">--</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      Last updated: <span id="timeValue">--</span>
+    </div>
+  </div>
+
+  <script>
+    // 1) Your Firebase config (copy from console)
+    const firebaseConfig = {
+      apiKey: "AIzaSyDIJO9HTKINvQt_7Qh3JPMW8cH6DtPA8jw",
+  authDomain: "smartwatermonitor-3e46c.firebaseapp.com",
+  databaseURL: "https://smartwatermonitor-3e46c-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "smartwatermonitor-3e46c",
+  storageBucket: "smartwatermonitor-3e46c.firebasestorage.app",
+  messagingSenderId: "384287949772",
+  appId: "1:384287949772:web:efdca89215f28d7a0a1369",
+  measurementId: "G-RX8Y8QDGFC"
+    };
+
+    // 2) Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    function formatTimestamp(ms) {
+      if (!ms) return "--";
+      const d = new Date(ms);
+      return d.toLocaleString();
+    }
+
+    function getStatusFromTDS(tds) {
+      if (tds < 150) return "GOOD";
+      else if (tds < 300) return "AVG";
+      else return "BAD";
+    }
+
+    // 3) Listen for latest reading
+    const readingsRef = db.ref("readings").limitToLast(1);
+
+    readingsRef.on("value", (snapshot) => {
+      snapshot.forEach(childSnap => {
+        const data = childSnap.val();
+
+        const temp = data.temperature || 0;
+        const tds  = data.tds || 0;
+        const turb = data.turbidity || "NA";
+        const ts   = data.timestamp || null;
+
+        document.getElementById("tempValue").textContent = temp.toFixed(2) + " °C";
+        document.getElementById("tdsValue").textContent  = tds.toFixed(2) + " ppm";
+
+        let turbText = turb;
+        if (turb === "Clr") turbText = "Clear";
+        if (turb === "Dty") turbText = "Dirty";
+        document.getElementById("turbValue").textContent = turbText;
+
+        const status = getStatusFromTDS(tds);
+        const pill = document.getElementById("statusPill");
+        pill.textContent = status;
+        pill.classList.remove("good", "avg", "bad");
+        if (status === "GOOD") pill.classList.add("good");
+        else if (status === "AVG") pill.classList.add("avg");
+        else pill.classList.add("bad");
+
+        document.getElementById("timeValue").textContent = formatTimestamp(ts);
+      });
+    }, (error) => {
+      console.error("Error reading data:", error);
+      alert("Error reading Firebase data. Check console.");
+    });
+  </script>
+</body>
+</html>
