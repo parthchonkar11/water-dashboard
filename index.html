@@ -87,7 +87,7 @@
     <div class="grid">
       <div class="box">
         <div class="label">Temperature</div>
-        <div class="value" id="tempValue">-- °C</div>
+        <div class="value" id="tempValue">-- Â°C</div>
       </div>
       <div class="box">
         <div class="label">TDS</div>
@@ -151,7 +151,7 @@
         const turb = data.turbidity || "NA";
         const ts   = data.timestamp || null;
 
-        document.getElementById("tempValue").textContent = temp.toFixed(2) + " °C";
+        document.getElementById("tempValue").textContent = temp.toFixed(2) + " Â°C";
         document.getElementById("tdsValue").textContent  = tds.toFixed(2) + " ppm";
 
         let turbText = turb;
