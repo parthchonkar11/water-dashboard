@@ -9,6 +9,9 @@
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/9.6.11/firebase-database-compat.js"></script>
 
+  <!-- Chart.js for graphs -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -77,6 +80,24 @@
       color: #9ca3af;
       margin-top: 8px;
     }
+
+    .chart-title {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 16px;
+      margin-bottom: 4px;
+    }
+    .chart-wrapper {
+      background: #020617;
+      border-radius: 10px;
+      padding: 8px;
+      border: 1px solid #1f2937;
+      margin-bottom: 8px;
+    }
+    canvas {
+      width: 100% !important;
+      height: 200px !important;
+    }
   </style>
 </head>
 <body>
@@ -108,19 +129,30 @@
     <div class="footer">
       Last updated: <span id="timeValue">--</span>
     </div>
+
+    <!-- Graphs -->
+    <div class="chart-title">TDS vs Time</div>
+    <div class="chart-wrapper">
+      <canvas id="tdsChart"></canvas>
+    </div>
+
+    <div class="chart-title">Temperature vs Time</div>
+    <div class="chart-wrapper">
+      <canvas id="tempChart"></canvas>
+    </div>
   </div>
 
   <script>
-    // 1) Your Firebase config (copy from console)
+    // 1) Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyDIJO9HTKINvQt_7Qh3JPMW8cH6DtPA8jw",
-  authDomain: "smartwatermonitor-3e46c.firebaseapp.com",
-  databaseURL: "https://smartwatermonitor-3e46c-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "smartwatermonitor-3e46c",
-  storageBucket: "smartwatermonitor-3e46c.firebasestorage.app",
-  messagingSenderId: "384287949772",
-  appId: "1:384287949772:web:efdca89215f28d7a0a1369",
-  measurementId: "G-RX8Y8QDGFC"
+      authDomain: "smartwatermonitor-3e46c.firebaseapp.com",
+      databaseURL: "https://smartwatermonitor-3e46c-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "smartwatermonitor-3e46c",
+      storageBucket: "smartwatermonitor-3e46c.firebasestorage.app",
+      messagingSenderId: "384287949772",
+      appId: "1:384287949772:web:efdca89215f28d7a0a1369",
+      measurementId: "G-RX8Y8QDGFC"
     };
 
     // 2) Initialize Firebase
@@ -139,7 +171,7 @@
       else return "BAD";
     }
 
-    // 3) Listen for latest reading
+    // 3) Listen for latest reading (for cards)
     const readingsRef = db.ref("readings").limitToLast(1);
 
     readingsRef.on("value", (snapshot) => {
@@ -172,6 +204,111 @@
     }, (error) => {
       console.error("Error reading data:", error);
       alert("Error reading Firebase data. Check console.");
+    });
+
+    // 4) Setup charts for TDS and Temperature
+    const tdsCtx = document.getElementById("tdsChart").getContext("2d");
+    const tempCtx = document.getElementById("tempChart").getContext("2d");
+
+    const tdsData = {
+      labels: [],
+      datasets: [{
+        label: "TDS (ppm)",
+        data: [],
+        borderWidth: 2,
+        fill: false,
+        tension: 0.2
+      }]
+    };
+
+    const tempData = {
+      labels: [],
+      datasets: [{
+        label: "Temperature (°C)",
+        data: [],
+        borderWidth: 2,
+        fill: false,
+        tension: 0.2
+      }]
+    };
+
+    const tdsChart = new Chart(tdsCtx, {
+      type: "line",
+      data: tdsData,
+      options: {
+        plugins: {
+          legend: {
+            labels: {
+              color: "#e5e7eb"
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: "#9ca3af" },
+            grid: { display: false }
+          },
+          y: {
+            ticks: { color: "#9ca3af" },
+            grid: { color: "#1f2937" }
+          }
+        }
+      }
+    });
+
+    const tempChart = new Chart(tempCtx, {
+      type: "line",
+      data: tempData,
+      options: {
+        plugins: {
+          legend: {
+            labels: {
+              color: "#e5e7eb"
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: "#9ca3af" },
+            grid: { display: false }
+          },
+          y: {
+            ticks: { color: "#9ca3af" },
+            grid: { color: "#1f2937" }
+          }
+        }
+      }
+    });
+
+    // 5) Listen for last N readings for graphs
+    const historyRef = db.ref("readings").limitToLast(20);
+
+    historyRef.on("value", (snapshot) => {
+      const labels = [];
+      const tdsValues = [];
+      const tempValues = [];
+
+      snapshot.forEach(childSnap => {
+        const d = childSnap.val();
+        if (!d) return;
+
+        const ts = d.timestamp;
+        const label = ts ? new Date(ts).toLocaleTimeString() : "";
+
+        labels.push(label);
+        tdsValues.push(d.tds || 0);
+        tempValues.push(d.temperature || 0);
+      });
+
+      tdsChart.data.labels = labels;
+      tdsChart.data.datasets[0].data = tdsValues;
+      tdsChart.update();
+
+      tempChart.data.labels = labels;
+      tempChart.data.datasets[0].data = tempValues;
+      tempChart.update();
+    }, (error) => {
+      console.error("Error reading history data:", error);
     });
   </script>
 </body>
